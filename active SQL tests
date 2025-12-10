@@ -1,0 +1,138 @@
+
+
+$content = Get-Content "C:\Users\psychomantis\Desktop\ps scripts\Tests.txt" -Raw -Encoding UTF8
+
+$tests = $content -split "(?m)^;\s*-+\s*Test\s*#?\s*\d+\s*-+"
+
+#Write-Host "Number of tests: $($tests.Count)"
+
+function Parse-TextBlock($block) {
+	
+	$obj = [ordered]@{
+		Title 			= ""
+		Method 			= ""
+		Disabled 		= ""
+		Alerts 			= ""
+		Comment			= ""
+		SQLQuery		= ""
+		#FullBlock		= $block.Trim()
+		
+	}
+
+$inSpecific = $false
+
+foreach ($line in $block -split "`n") {
+	if ($line -match "^Title\s*=\s*(.+)") {
+		$obj.Title = $Matches[1].Trim()
+		continue
+	}
+	
+	if ($line -match "^Method\s*=\s*(.+)") {
+		$obj.Method = $Matches[1].Trim()
+		continue
+	}
+	
+	if ($line -match "^Disabled\s*=\s*(.+)") {
+		$obj.Disabled = $Matches[1].Trim()
+		continue
+	}
+	
+	if ($line -match "^Alerts\s*=\s*(.+)") {
+		$obj.Alerts = $Matches[1].Trim()
+		continue
+	}
+	
+	if ($line -match "^Comment\s*=\s*(.+)") {
+		$obj.Comment = $Matches[1].Trim()
+		continue
+	}
+	
+	if ($line -match "^SQLQuery\s*=\s*(.+)") {
+		$obj.SQLQuery = $Matches[1].Trim()
+		continue
+	}
+	if ($line -match "^-+ Test specific properties -+") {
+		$inSpecific = $true
+		continue
+	}
+	
+}
+
+	return [PSCustomObject]$obj
+}
+
+$parsedTests = $tests | Where-Object { $_.Trim() -ne "" } | ForEach-Object { Parse-TextBlock $_ }
+Write-Host "parsed tests: $($parsedTests.Count)"
+
+
+$testsODBC = $parsedTests | Where-Object {$_.Method -match "ODBC"}
+Write-Host "Tests with ODBC: $($testsODBC.Count)"
+
+$activeSqlTests = $sqlTests | Where-Object {
+$_.Disabled -eq "Yes"} 
+
+Write-Host "Disabled tests with ODBC method: $($activeSqlTests.Count)"
+
+$excel = New-Object -ComObject Excel.Application
+$excel.Visible = $false
+$excel.DisplayAlerts = $false
+
+$workbook = $excel.Workbooks.Add()
+$sheet = $workbook.Worksheets.Item(1)
+
+
+$headers = @(
+	"Title", 
+	"Method",
+	"Alerts",
+	"Disabled",
+	"SQLQuery"
+	)
+	
+	for ($i=0; $i -lt $headers.Count; $i++) {
+		$sheet.Cells.Item(1, $i+1).Value2 = $headers[$i]
+	}
+	
+	$row = 2 
+	foreach ($t in $testsODBC) {
+		$sheet.Cells.Item($row, 1).Value2 = $t.Title
+		$sheet.Cells.Item($row, 2).Value2 = $t.Method
+		$sheet.Cells.Item($row, 3).Value2 = $t.Alerts
+		$sheet.Cells.Item($row, 4).Value2 = $t.Disabled
+		$sheet.Cells.Item($row, 5).Value2 = $t.SQLQuery
+		
+	$row++
+	}
+
+$sheet.Columns.AutoFit() | Out-Null
+
+$path = Join-Path $pwd "SQLv2.xlsx"
+$workbook.SaveAs($path)
+$workbook.Close()
+$excel.Quit()
+	
+	
+	
+	
+	
+	
+	
+	
+	
+#"Title;Method;Alerts;Disabled;SQLQuery;" | 
+	#Set-Content -Path "SQL_Tests.csv" -Encoding UTF8	
+	
+#foreach ($t in $testsODBC) {
+
+		#$safeSQL = $t.SQLQuery.Replace('"','""')
+		#$safeSQL = '"' + $safeSQL + '"'
+	
+		#$line =  "$($t.Title);" +
+				 # "$($t.Method);" +
+				 # "$($t.Alerts);" +
+				 # "$($t.Disabled);" +
+				 #  "$safeSQL"
+						
+				
+		#Add-Content -Path "SQL_Tests.csv" -Value $line
+#}	
