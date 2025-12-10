@@ -1,6 +1,6 @@
 
 
-$content = Get-Content "C:\Users\psychomantis\Desktop\ps scripts\Tests.txt" -Raw -Encoding UTF8
+$content = Get-Content "C:\Users\xxx\Desktop\ps scripts\Tests.txt" -Raw -Encoding UTF8
 
 $tests = $content -split "(?m)^;\s*-+\s*Test\s*#?\s*\d+\s*-+"
 
