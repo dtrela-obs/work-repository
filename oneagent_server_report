@@ -1,4 +1,4 @@
-$oneAgentCtlPath = "C:\Program Files\dynatrace\oneagent\agent\tools\oneagentctl.exe"
+$oneAgentCtlPath = "<pathfile>"
 
 try {
 	$serverOutput = & $oneAgentCtlPath --get-server
@@ -44,7 +44,7 @@ if (-not $servers) {
 
 
 
-$reportfile = "C:\Program Files\dynatrace\report\dynatrace_server_report_$(Get-Date -Format yyyy-MM-dd_HH-mm-ss).txt"
+$reportfile = "<path>$(Get-Date -Format yyyy-MM-dd_HH-mm-ss).txt"
 New-Item -ItemType File -Path $reportfile -Force | Out-Null
 
 function Log($text) {
