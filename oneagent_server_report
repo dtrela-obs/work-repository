@@ -1,0 +1,86 @@
+$oneAgentCtlPath = "C:\Program Files\dynatrace\oneagent\agent\tools\oneagentctl.exe"
+
+try {
+	$serverOutput = & $oneAgentCtlPath --get-server
+}
+
+catch {
+		Write-Host "Can't execute command: $($_.Exeption.Message)" -ForegroundColor Red
+		exit
+		
+}
+
+$servers = @()
+foreach ($line in $serverOutput) {
+		$cleanLine = $line.Trim()
+		$cleanLine = $cleanLine -replace '^\*\{',''
+		$cleanLine = $cleanLine -replace '^\{',''
+		$cleanLine = $cleanLine -replace '^\*',''
+		$cleanLine = $cleanLine -replace '^\}$',''
+		$parts = $cleanLine -split '[;\s]+'
+		
+		
+		
+		foreach ($part in $parts) {
+			$urlpart = $part.Trim()
+			$urlpart = $urlpart -replace '^\{',''
+			
+				if ($urlpart -match "https?://") {
+					try {
+						$uri = [System.Uri]$urlpart
+						$hostPort = "$($uri.Host):$($uri.Port)"
+				$servers += $hostPort
+					}
+					catch {
+						Write-Host "Invalid URL $urlpart"
+					}
+			}
+		}
+}		
+if (-not $servers) {
+	Write-Host "Servers not found" -ForegroundColor Red	
+	exit
+}
+
+
+
+$reportfile = "C:\Program Files\dynatrace\report\dynatrace_server_report_$(Get-Date -Format yyyy-MM-dd_HH-mm-ss).txt"
+New-Item -ItemType File -Path $reportfile -Force | Out-Null
+
+function Log($text) {
+	Add-Content $reportfile $text
+}
+
+Log " Dynatrace Servers Test Report:"
+Log "Date: $(Get-Date)"
+Log ""	
+
+$count = 1 
+foreach ($s in $servers) {
+	$parts = $s -split ":" 
+	$hostName = $parts[0]
+	$port = [int]$parts[1]
+	$url = "https://$($hostName):$($port)/communication"
+	
+	Log "Server #$($count): $($hostName) Port: $port URL: $url"
+	
+	$tcp = Test-NetConnection -ComputerName $hostName -Port $port
+		if ($tcp.TcpTestSucceeded) {
+		Log "TCP: OK" }
+		else {
+		Log "TCP: Failed"}
+		
+	try {
+		$resp = Invoke-WebRequest $url -UseBasicParsing -TimeoutSec 5
+		Log "Https: OK (Status $($resp.StatusCode))"
+	}
+	catch {
+		$err =$_.Exception.Message
+		Log "HTTTPS: Error - $err"
+	}
+	
+	
+	Log ""
+	
+	$count++
+}	
